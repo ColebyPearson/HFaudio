@@ -1,0 +1,154 @@
+# HuggingFace Audio Transformers Course - Unit 0: Introduction & Unit 1: Working with Audio Data
+
+## Unit 0: Welcome to the Course
+
+Welcome to the HuggingFace course on using transformers for audio. Transformers have proven themselves as one of the most powerful and versatile deep learning architectures, capable of achieving state-of-the-art results in natural language processing, computer vision, and audio processing.
+
+In this course, you will explore how transformers can be applied to audio data. You'll learn how to use them to tackle audio-related tasks including speech recognition, audio classification, and generating speech from text.
+
+The course is designed for learners with a background in deep learning and general familiarity with transformers. No expertise in audio data processing is required.
+
+### Course Structure
+- Unit 1: Working with audio data - fundamentals, processing techniques, data preparation
+- Unit 2: Audio applications using HuggingFace Transformers pipelines
+- Unit 3: Audio transformer architectures
+- Unit 4: Build a music genre classifier (hands-on exercise)
+- Unit 5: Speech recognition and fine-tuning (hands-on exercise)
+- Unit 6: Text-to-speech generation (hands-on exercise)
+- Unit 7: Putting it all together - real-world applications (hands-on exercise)
+
+### Certification
+- Certificate of completion: Complete 80% of hands-on exercises (3 of 4)
+- Certificate of honors: Complete 100% of hands-on exercises (all 4)
+
+## Unit 1: Working with Audio Data
+
+### Introduction to Audio Data
+
+Sound is a continuous signal containing infinite signal values in a given time. To be processed by digital devices, the continuous sound wave needs to be converted into discrete values through sampling.
+
+#### Sampling and Sampling Rate
+
+Sampling is the process of measuring the value of a continuous signal at fixed time steps. The sampling rate is the number of samples taken per second, measured in hertz (Hz).
+
+Key sampling rates:
+- CD quality: 44,100 Hz (44.1 kHz)
+- High-resolution audio: 192,000 Hz (192 kHz)
+- Common for speech models: 16,000 Hz (16 kHz)
+
+The choice of sampling rate determines the highest frequency that can be captured, known as the Nyquist limit, which is exactly half the sampling rate. Human speech frequencies are below 8 kHz, so 16 kHz sampling is sufficient for speech. Using a higher sampling rate won't capture more information and increases computational cost.
+
+Important: All audio examples in a dataset must have the same sampling rate. If using custom audio data to fine-tune a pre-trained model, the sampling rate must match what the model was pre-trained on. Resampling is the process of matching sampling rates.
+
+#### Amplitude and Bit Depth
+
+Amplitude describes the sound pressure level at any given instant, measured in decibels (dB). Bit depth determines how precisely each amplitude value can be described:
+- 16-bit audio: 65,536 possible values (most common, sufficient quality)
+- 24-bit audio: 16,777,216 possible values
+- 32-bit floating-point: same precision as 24-bit, values in [-1.0, 1.0] range
+
+Machine learning models work on floating-point data, so audio must be converted to floating-point format before training.
+
+#### Audio as a Waveform
+
+A waveform plots sample values over time, showing changes in amplitude. This is the time domain representation of sound. It's useful for identifying timing of sound events, overall loudness, and noise.
+
+Using librosa:
+```python
+import librosa
+array, sampling_rate = librosa.load(librosa.ex("trumpet"))
+```
+
+#### The Frequency Spectrum
+
+The frequency spectrum shows individual frequencies in a signal and their strengths. It's computed using the discrete Fourier transform (DFT). The spectrum is the frequency domain representation - it contains the exact same information as the waveform, just viewed differently.
+
+In practice, people use the term FFT (Fast Fourier Transform) interchangeably with DFT.
+
+#### Spectrogram
+
+A spectrogram shows how frequencies change over time by taking multiple DFTs over small time slices and stacking them together. It's created using the Short Time Fourier Transform (STFT).
+
+The spectrogram plots time on the x-axis, frequency on the y-axis, and color intensity for amplitude/power. Each vertical slice corresponds to a single frequency spectrum.
+
+Spectrograms can be converted back to waveforms using inverse STFT (if phase information is available) or using a vocoder neural network.
+
+#### Mel Spectrogram
+
+A mel spectrogram uses the mel scale instead of a linear frequency axis. The mel scale approximates the non-linear frequency response of the human ear - humans are more sensitive to changes in lower frequencies than higher frequencies.
+
+To create a mel spectrogram: apply STFT, then pass each spectrum through a mel filterbank.
+
+A log-mel spectrogram expresses mel frequency components in decibels. This is commonly used as input to machine learning models.
+
+Important: Not all mel spectrograms are identical. There are two mel scales ("htk" and "slaney"), amplitude vs power spectrograms can be used, and the log conversion varies. When using a model, ensure you compute the mel spectrogram the same way it expects.
+
+Converting a mel spectrogram back to a waveform requires estimating discarded frequencies, which is why vocoders like HiFiGAN are needed.
+
+### Loading and Exploring Audio Datasets
+
+The HuggingFace Datasets library provides easy access to audio datasets. Install with:
+```
+pip install datasets[audio] soundfile librosa
+```
+
+Loading a dataset:
+```python
+from datasets import load_dataset
+minds = load_dataset("PolyAI/minds14", name="en-AU", split="train")
+```
+
+The MINDS-14 dataset contains recordings of people asking an e-banking system questions in several languages. Each example contains audio (as a NumPy array with path and sampling rate), transcription, and intent class.
+
+You can remove irrelevant columns, listen to examples, and visualize waveforms.
+
+### Preprocessing Audio Data
+
+#### Resampling
+Most pretrained models expect 16 kHz audio. Use cast_column to resample:
+```python
+from datasets import Audio
+minds = minds.cast_column("audio", Audio(sampling_rate=16_000))
+```
+
+Resampling correctly is tricky - upsampling calculates values between existing samples by approximating the curve, while downsampling requires filtering out frequencies above the new Nyquist limit first. Libraries like librosa and Datasets handle this properly.
+
+#### Filtering
+Filter examples by duration to prevent out-of-memory errors:
+```python
+minds = minds.filter(is_audio_length_in_range)
+```
+
+#### Feature Extraction
+Use model-specific feature extractors to convert raw audio to model-expected format:
+```python
+from transformers import AutoFeatureExtractor
+feature_extractor = AutoFeatureExtractor.from_pretrained("openai/whisper-small")
+inputs = feature_extractor(audio_array, sampling_rate=16000, return_tensors="pt")
+```
+
+Whisper's feature extractor converts audio to log-mel spectrograms of shape (80, 3000) - 80 mel bins and 3000 time steps for 30 seconds of audio.
+
+### Streaming Audio Data
+
+For large datasets, use streaming mode to load data progressively:
+```python
+gigaspeech = load_dataset("speechcolab/gigaspeech", "xs", streaming=True)
+```
+
+Advantages of streaming:
+- No disk space requirements
+- Start using data immediately
+- Easy experimentation
+
+Caveat: Data is not cached, so streaming must be repeated for reuse.
+
+Access examples by iterating:
+```python
+next(iter(gigaspeech["train"]))
+```
+
+Use take() to preview a few examples:
+```python
+gigaspeech_head = gigaspeech["train"].take(2)
+```
