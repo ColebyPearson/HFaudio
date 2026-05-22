@@ -1,0 +1,126 @@
+HuggingFace Audio Transformers Course - Unit 2: Audio Applications & Unit 3: Transformer Architectures
+
+==============================
+UNIT 2: A GENTLE INTRODUCTION TO AUDIO APPLICATIONS
+==============================
+
+Audio Classification with a Pipeline
+
+Audio classification assigns labels to audio recordings based on content. These labels can represent broad sound categories like music, speech, or noise, or more specific categories like bird song or car engine sounds.
+
+Using the audio-classification pipeline in the Transformers library is straightforward. You import the pipeline function, create a classifier with a specified model such as anton-l/xtreme_s_xlsr_300m_minds14, and pass audio data to it. The pipeline handles all preprocessing automatically, including resampling and feature extraction.
+
+Example usage:
+- Import pipeline from transformers.
+- Create classifier with pipeline("audio-classification", model="anton-l/xtreme_s_xlsr_300m_minds14").
+- Call classifier on the audio array to get predicted labels and confidence scores.
+
+One important consideration is that a pre-trained model's class set may not match your needs. For instance, the model above was trained on 14 intent classes for phone calls. If you need different categories, you would need to fine-tune a model on your own labeled dataset.
+
+Automatic Speech Recognition with a Pipeline
+
+Automatic speech recognition, or ASR, transcribes speech recordings into text. This is one of the most popular audio tasks.
+
+Using the automatic-speech-recognition pipeline follows the same pattern as audio classification. You create the pipeline, pass in audio data, and get a text transcription back. By default, the pipeline uses an English-trained model (such as facebook/wav2vec2-base-960h), but you can specify models trained on other languages.
+
+Example usage:
+- Import pipeline from transformers.
+- Create asr pipeline with pipeline("automatic-speech-recognition").
+- Call asr on the audio array to get the transcribed text.
+
+The pipeline approach offers quick baselines for ASR tasks and handles all pre-processing and post-processing behind the scenes. For production use cases requiring higher accuracy, you would fine-tune a model on domain-specific data.
+
+Text-to-Speech and Audio Generation
+
+Text-to-speech, or TTS, creates narrated audio versions of text. This is the inverse of ASR. Models like SpeechT5 can perform TTS, but they require speaker embeddings to control the output voice characteristics. Speaker embeddings are vector representations that capture the vocal qualities of a specific speaker, allowing the model to generate speech that sounds like that speaker. TTS is covered in much greater detail in Unit 6 of the course.
+
+==============================
+UNIT 3: TRANSFORMER ARCHITECTURES FOR AUDIO
+==============================
+
+How Transformers Work for Audio
+
+The original transformer architecture has two main components: an encoder that builds representations from input sequences, and a decoder that generates target sequences from those representations. Audio transformers modify the input and output sides of the standard transformer to handle audio data instead of text.
+
+There are three main architecture types used for audio tasks:
+
+Encoder-only models include Wav2Vec2, HuBERT, and the Audio Spectrogram Transformer. These are well suited for classification tasks and ASR when combined with CTC (Connectionist Temporal Classification) decoding.
+
+Encoder-decoder models include Whisper and SpeechT5. These are well suited for ASR using sequence-to-sequence approaches, as well as text-to-speech generation.
+
+Decoder-only models are less common for audio tasks compared to the other two architecture types.
+
+------
+Model Inputs
+------
+
+There are several ways audio data can be fed into transformer models.
+
+Text Input for TTS Models:
+For text-to-speech models, text input is tokenized and embedded into vectors, then passed to the encoder. This works the same way as in standard NLP transformer models.
+
+Waveform Input for Models like Wav2Vec2 and HuBERT:
+Raw audio waveforms are first normalized to zero mean and unit variance. A CNN feature encoder then processes the normalized waveform, subsampling it to produce one 512-dimensional embedding per 25 milliseconds of audio. This CNN acts as a learned feature extractor that converts the raw signal into a more compact representation suitable for the transformer layers.
+
+Spectrogram Input for Models like Whisper:
+Audio is converted to a log-mel spectrogram before being fed to the model. Whisper splits audio into 30-second segments, and each segment becomes a spectrogram with dimensions of 80 by 3000, representing 80 mel frequency bins and 3000 time steps. This spectrogram representation is much shorter than the equivalent raw waveform sequence, making it more efficient for the transformer to process. A small CNN then converts the spectrogram into the embedding vectors the transformer expects.
+
+------
+Model Outputs
+------
+
+Text Output for ASR:
+For automatic speech recognition, a language modeling head consisting of a linear layer followed by softmax activation predicts text token probabilities at each time step. The model outputs a probability distribution over the vocabulary for each position, and the most likely tokens are selected to form the transcription.
+
+Spectrogram Output for TTS (such as SpeechT5):
+For text-to-speech, the decoder output is projected into a log-mel spectrogram. A post-net, which is a small additional neural network, refines the predicted spectrogram to improve quality. Finally, a vocoder converts the spectrogram into an audible waveform. The vocoder is a separate model that generates high-fidelity audio from the mel spectrogram representation.
+
+------
+CTC: Connectionist Temporal Classification
+------
+
+CTC is used with encoder-only models for ASR. The encoder maps audio input to a sequence of hidden states, and a linear layer predicts characters from these hidden states.
+
+The Alignment Problem:
+A fundamental challenge in CTC is that we do not know how characters align to audio frames. The model predicts one character per approximately 20 milliseconds of audio, which means a 10-second audio clip produces about 500 predictions. Since most words are much shorter than 500 characters, the output contains many duplicate characters.
+
+The CTC Blank Token:
+The CTC blank token solves the alignment problem. It serves as a hard boundary between groups of identical characters. During decoding, duplicates within groups are first collapsed, then blank tokens are removed.
+
+For example, consider the raw CTC output: _ER_RRR_ORR (where _ represents the blank token). First, duplicates within groups are collapsed: ER_R_OR. Then blank tokens are removed: ERROR. This yields the correct word.
+
+CTC is simple and computationally efficient because it only requires an encoder pass, with no autoregressive decoding. However, it can produce phonetically correct but misspelled words because it predicts characters independently without a language model. An external language model can be combined with CTC decoding to help correct these errors.
+
+Wav2Vec2 versus HuBERT:
+These two models share the same architecture but differ in their pre-training approach. Wav2Vec2 predicts masked speech units, similar to how BERT predicts masked text tokens. HuBERT predicts "discrete speech units" that are analogous to text tokens, learned through a separate clustering step. Another variant, M-CTC-T, uses mel spectrograms as input instead of raw waveforms.
+
+------
+Seq2Seq: Sequence-to-Sequence
+------
+
+Encoder-decoder models use a sequence-to-sequence approach where the input and output can have different lengths. The decoder generates tokens autoregressively, meaning it produces one token at a time, using previously generated tokens as additional context.
+
+Seq2Seq for ASR with Whisper:
+The encoder processes a log-mel spectrogram of the input audio. The decoder then generates text tokens one at a time, using cross-attention over the encoder outputs to attend to relevant parts of the audio. Importantly, the decoder also acts as a language model, which allows it to correct spelling on the fly during generation.
+
+Whisper uses a vocabulary of over 50,000 word-level tokens derived from the GPT-2 tokenizer. Because each token represents a whole word or subword rather than a single character, the output sequences are much shorter than CTC character-by-character output. This makes Whisper both more efficient at inference and better at producing correctly spelled words.
+
+Seq2Seq for TTS with SpeechT5:
+The encoder processes text input, and the decoder generates spectrogram frames one at a time. A separate mechanism predicts when to stop generating frames, which determines the length of the output audio. A post-net refines the generated spectrogram to improve audio quality, and a vocoder converts the final spectrogram into an audible waveform.
+
+TTS is a particularly challenging task because it is one-to-many: the same text can be spoken in many different ways, varying in speed, pitch, emphasis, and emotion. This inherent variability makes evaluation difficult. TTS systems are typically evaluated using human MOS (mean opinion score) ratings, where listeners rate the naturalness of generated speech on a scale.
+
+Tradeoffs of Seq2Seq:
+Sequence-to-sequence models are generally more powerful than CTC because the decoder can use language modeling knowledge to produce more coherent output. However, they are slower due to autoregressive decoding, where each token must be generated before the next can begin. Seq2seq models can also encounter failure modes such as getting stuck in repetitions or skipping words entirely.
+
+------
+Audio Classification Architectures
+------
+
+Audio Spectrogram Transformer (AST):
+The Audio Spectrogram Transformer treats spectrograms as if they were images and applies a Vision Transformer (ViT) architecture. It splits the input spectrogram into 16-by-16 patches, projects each patch to an embedding vector, and processes the sequence of embeddings with a standard transformer encoder.
+
+An important caveat is that spectrograms are not really images, even though they look like them visually. In a real image, shifting content up or down represents spatial translation and the object is still the same. In a spectrogram, shifting content up or down changes the frequencies being represented, which fundamentally changes the sound. This means that spatial invariance assumptions from computer vision do not directly apply.
+
+General Classification Approach:
+Any encoder-only audio model can become a classifier by adding a classification layer on top of its representations. For sequence-level classification, such as identifying the overall category of an audio clip, you take the mean over all hidden states to produce a single vector, then feed that vector to a classifier head. For frame-level classification, such as identifying which parts of audio contain speech, you run a classifier on each individual hidden state, producing a prediction for each time frame.

@@ -1,0 +1,157 @@
+HuggingFace Audio Transformers Course - Unit 4: Audio Classification and Unit 5: Speech Recognition
+
+This document covers two major units from the HuggingFace Audio Transformers Course. Unit 4 focuses on audio classification, culminating in building a music genre classifier. Unit 5 covers automatic speech recognition (ASR), including fine-tuning the Whisper model.
+
+========================================
+UNIT 4: BUILD A MUSIC GENRE CLASSIFIER
+========================================
+
+PRE-TRAINED MODELS FOR AUDIO CLASSIFICATION
+
+The Hugging Face Hub hosts over 500 pre-trained audio classification models. Encoder-only transformer models are the preferred architecture for classification tasks because they naturally map an input sequence to a single output label. This makes them well-suited for tasks where the goal is to assign one category to an entire audio clip.
+
+Common audio classification tasks include keyword spotting, language identification, and zero-shot audio classification.
+
+KEYWORD SPOTTING
+
+Keyword spotting is the task of detecting specific trigger words or phrases in audio, such as "Hey Siri" or "OK Google." A prominent example is the Audio Spectrogram Transformer (AST) fine-tuned on the Speech Commands dataset, which contains recordings of over 15 command words like "up," "down," "yes," "no," "stop," and "go." The model listens continuously and activates when it detects one of these predefined keywords.
+
+LANGUAGE IDENTIFICATION
+
+Language identification is the task of determining which language is being spoken in an audio clip. The Whisper model fine-tuned on the FLEURS dataset is a strong example here. FLEURS is a multilingual speech dataset, and the fine-tuned Whisper model supports identification of 102 different languages. Given a short audio sample, the model outputs the most likely language being spoken.
+
+ZERO-SHOT AUDIO CLASSIFICATION
+
+Zero-shot audio classification uses the CLAP (Contrastive Language-Audio Pretraining) model, which takes both audio and text as inputs and computes a similarity score between them. You define a set of candidate text labels, and the model determines which label best matches the given audio. This approach is highly flexible because you can define any set of labels at inference time without retraining. However, it is generally less accurate than models that have been specifically fine-tuned for a particular classification task.
+
+FINE-TUNING FOR MUSIC CLASSIFICATION
+
+Dataset: GTZAN
+
+The GTZAN dataset is a standard benchmark for music genre classification. It contains 1,000 songs (technically 999 because one file is corrupted), each 30 seconds long, evenly distributed across 10 genres: blues, classical, country, disco, hiphop, jazz, metal, pop, reggae, and rock. For training, the dataset is split 90/10, with 90 percent used for training and 10 percent reserved for validation.
+
+Model Choice: DistilHuBERT
+
+DistilHuBERT is a distilled version of the HuBERT (Hidden-Unit BERT) model. Distillation is a compression technique where a smaller student model is trained to mimic a larger teacher model. DistilHuBERT achieves 73 percent faster training times compared to HuBERT while preserving most of its performance. A key advantage of DistilHuBERT is that it operates directly on raw audio waveforms rather than requiring a separate spectrogram computation step.
+
+PREPROCESSING STEPS
+
+Step 1: Resample to 16 kHz. The GTZAN dataset has an original sample rate of 22,050 Hz, but DistilHuBERT expects audio at 16,000 Hz (16 kHz). All audio must be resampled to match the model's expected input rate.
+
+Step 2: Apply the feature extractor. The feature extractor performs normalization on the raw waveform, specifically adjusting it to have zero mean and unit variance. This standardization ensures consistent input scaling across all examples.
+
+Step 3: Truncate to 30 seconds. Each song clip is truncated (or padded) to exactly 30 seconds to ensure uniform input lengths across the dataset.
+
+Step 4: Rename the label column. The original dataset uses a column called "genre" but the Hugging Face Trainer expects a column named "label." The column must be renamed to match this convention.
+
+TRAINING SETUP
+
+The model used is AutoModelForAudioClassification configured with 10 output labels corresponding to the 10 music genres. The training arguments are as follows: batch size of 8, learning rate of 5e-5, 10 training epochs, and fp16 (mixed-precision) training enabled for faster computation. The evaluation metric is accuracy, computed at the end of each epoch. After training completes, the model is pushed to the Hugging Face Hub.
+
+RESULTS
+
+After 10 epochs of training, the model achieves approximately 83 percent accuracy on the validation set. This result can be improved through several strategies: training for more epochs, using a different base model such as the Audio Spectrogram Transformer (AST) which often achieves 90 percent or higher, or applying data augmentation techniques to increase the effective training data size.
+
+UNIT 4 HANDS-ON EXERCISE
+
+The hands-on exercise for Unit 4 requires achieving at least 87 percent accuracy on the GTZAN dataset. The trained model must be pushed to the Hugging Face Hub with specific keyword arguments including dataset_tags, model_name, finetuned_from, and tasks. These metadata fields ensure the model card is properly populated and the model is discoverable on the Hub.
+
+========================================
+UNIT 5: SPEECH RECOGNITION (ASR)
+========================================
+
+PRE-TRAINED MODELS FOR ASR
+
+There are two main architectural approaches to automatic speech recognition.
+
+CTC MODELS (WAV2VEC2)
+
+Connectionist Temporal Classification (CTC) models, such as Wav2Vec2, predict individual characters for each frame of audio. They are fast at inference time but are prone to phonetic spelling errors. For example, a CTC model might output "CHRISTMAUS" instead of "CHRISTMAS" because it predicts characters based on how words sound rather than how they are conventionally spelled. CTC models also do not produce punctuation or proper casing in their output.
+
+SEQ2SEQ MODELS (WHISPER)
+
+Sequence-to-sequence models like Whisper use an encoder-decoder architecture with built-in language model capabilities. The encoder processes the audio input, and the decoder generates the text output autoregressively, one token at a time. Because the decoder functions as a language model, Whisper outputs proper punctuation and casing. Whisper comes in five model sizes: tiny (39 million parameters), base, small, medium, and large (1.5 billion parameters). The model was pre-trained by OpenAI on 680,000 hours of labeled audio data covering 96 or more languages.
+
+WHISPER FEATURES
+
+Speech recognition: Whisper can transcribe audio in the same language it was spoken in. This is the standard transcription mode.
+
+Speech translation: Whisper can translate speech from any of its supported languages into English. This is built into the model and does not require a separate translation step.
+
+Long-form transcription: For audio longer than 30 seconds, Whisper uses a chunking strategy that splits the audio into 30-second segments with overlap between them. Each segment is transcribed individually, and the results are merged together.
+
+Timestamp prediction: Whisper can predict timestamps for each segment of transcribed text, indicating when each word or phrase was spoken in the original audio.
+
+Batched processing: Multiple audio segments can be processed simultaneously in a batch for faster inference speed.
+
+CHOOSING A DATASET
+
+When selecting a dataset for ASR training or evaluation, several key features should be considered. The number of hours of audio determines the scale of the dataset. The domain describes where the audio comes from, such as audiobooks, YouTube videos, or meeting recordings. The speaking style distinguishes between narrated speech (read aloud from a script) and spontaneous speech (natural conversation). The transcription style indicates whether the ground-truth text includes punctuation and proper casing.
+
+POPULAR ASR DATASETS
+
+LibriSpeech contains 960 hours of English audiobook recordings. It is one of the most widely used benchmarks for ASR.
+
+Common Voice is a crowd-sourced dataset with over 3,000 hours of audio across 108 languages. Contributors record themselves reading sentences, making it diverse but variable in recording quality.
+
+VoxPopuli contains 540 hours of audio from European Parliament proceedings in 15 European languages. The speech is formal and clearly articulated.
+
+GigaSpeech contains 10,000 hours of audio from multiple domains including podcasts, YouTube, and audiobooks. It is one of the largest publicly available English ASR datasets.
+
+EVALUATION METRICS
+
+WORD ERROR RATE (WER)
+
+Word Error Rate is the de facto standard metric for evaluating ASR systems. It operates at the word level and counts three types of errors: substitutions (a word in the reference is replaced by a different word), insertions (an extra word appears in the prediction that is not in the reference), and deletions (a word in the reference is missing from the prediction).
+
+The formula is: WER = (S + I + D) / N, where S is the number of substitutions, I is the number of insertions, D is the number of deletions, and N is the total number of words in the reference. Lower WER is better. Notably, WER can exceed 100 percent if the number of errors is greater than the number of reference words, which can happen when there are many insertions.
+
+NORMALIZED WER
+
+Normalized WER applies text normalization before computing the error rate. This normalization removes punctuation and casing differences so that the metric focuses purely on word-level content accuracy. Normalized WER is often significantly lower than orthographic WER because it ignores formatting differences that do not affect the meaning of the transcription.
+
+FINE-TUNING WHISPER
+
+The course demonstrates fine-tuning Whisper Small on Common Voice version 13, specifically on the Dhivehi language. Dhivehi is a low-resource language spoken in the Maldives, making it a compelling example of how fine-tuning can dramatically improve ASR performance on languages with limited training data.
+
+PIPELINE COMPONENTS
+
+The Whisper pipeline consists of three components that work together.
+
+WhisperFeatureExtractor converts raw audio waveforms into log-mel spectrograms. A log-mel spectrogram is a visual representation of audio that captures frequency content over time, with the mel scale approximating how humans perceive pitch and the log scale compressing the dynamic range.
+
+WhisperTokenizer converts text strings into sequences of token IDs that the model can process. It handles the vocabulary mapping and special tokens required by the Whisper architecture.
+
+WhisperProcessor wraps both the feature extractor and tokenizer together into a single convenient interface, allowing you to process both audio inputs and text labels with a single object.
+
+DATA PREPARATION
+
+All audio must be resampled to 16 kHz to match Whisper's expected input sample rate. The feature extractor then computes log-mel spectrogram features from the resampled audio. The transcription text is tokenized into token IDs using the WhisperTokenizer. Any examples longer than 30 seconds are filtered out because Whisper's architecture processes audio in 30-second chunks.
+
+CUSTOM DATA COLLATOR
+
+A custom data collator is required for Whisper fine-tuning because input features and labels have different padding requirements. Input features (spectrograms) are padded to the longest example in the batch using standard padding values. Labels (token sequences) are padded separately, and the padding token IDs are replaced with -100. The value -100 is a special sentinel that tells PyTorch's cross-entropy loss function to ignore those positions, so the model is not penalized for predicting padding tokens. The data collator also handles the beginning-of-sequence (BOS) token that Whisper expects at the start of each label sequence.
+
+TRAINING CONFIGURATION
+
+Training uses the Seq2SeqTrainer with predict_with_generate set to True, which means the trainer generates full text predictions during evaluation rather than just computing the loss. Gradient checkpointing is enabled to reduce memory usage at the cost of slightly slower training. Mixed-precision training (fp16) is used for computational efficiency. The model is trained for 500 steps.
+
+RESULTS
+
+After fine-tuning for 500 steps, the model achieves a Word Error Rate of 14.1 percent on the Dhivehi test set. This represents a 112 percent improvement over the pre-trained Whisper model's performance on the same language. Remarkably, this result was achieved with only about 7 hours of training data and required less than one hour of actual training time. This demonstrates the power of fine-tuning large pre-trained models on low-resource languages.
+
+UNIT 5 HANDS-ON EXERCISE
+
+The hands-on exercise for Unit 5 requires fine-tuning the whisper-tiny model on the PolyAI/minds14 dataset, specifically the en-US (American English) subset. The first 450 examples are used for training and the remaining examples are used for evaluation. An important technical note is that num_proc must be set to 1 during data processing. When reporting the Word Error Rate, results must be expressed as decimals rather than percentages (for example, 0.35 instead of 35 percent). The target performance is a normalized WER below 0.37. The fine-tuned model must be pushed to the Hugging Face Hub with the required keyword arguments for proper metadata.
+
+========================================
+KEY CONCEPTS SUMMARY
+========================================
+
+Audio classification uses encoder-only transformer models to assign a single label to an audio clip. Common tasks include keyword spotting, language identification, and genre classification. DistilHuBERT is an efficient choice for classification tasks because it works directly on raw waveforms and trains 73 percent faster than its teacher model.
+
+Automatic speech recognition converts spoken audio into text. CTC models like Wav2Vec2 are fast but produce raw character output without punctuation. Seq2Seq models like Whisper produce properly formatted text with punctuation and casing. Whisper is particularly powerful because it supports transcription, translation, timestamps, and long-form audio processing.
+
+Word Error Rate is the standard evaluation metric for ASR. It measures substitutions, insertions, and deletions at the word level. Normalized WER removes formatting differences before computing the score.
+
+Fine-tuning pre-trained models on domain-specific or low-resource language data can yield dramatic improvements. The Whisper Dhivehi example shows a 112 percent improvement with just 7 hours of data and under one hour of training time.
