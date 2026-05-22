@@ -1,5 +1,20 @@
 # Plan: Tackle the 4 Graded Exercises for HF Audio Course Certificate
 
+## Progress Tracker
+
+**Overall: 4/4 complete 🎉** — clears both completion (3/4) and honors (4/4). Unit 7 assessment submission is the only manual step left (see note in its row).
+
+| Done | Exercise | Notebook | Pass Criteria | Model/Space on Hub |
+|:----:|----------|----------|---------------|--------------------|
+| ✅ | Unit 4: Music Genre Classifier | `unit_4/04_music_genre_classifier.ipynb` | ≥ 87% accuracy (**got 0.89**) | [VoicesColeby/distilhubert-finetuned-gtzan](https://huggingface.co/VoicesColeby/distilhubert-finetuned-gtzan) |
+| ✅ | Unit 5: Speech Recognition (ASR) | `unit_5/05_speech_recognition.ipynb` | WER < 0.37 (**got 0.321**) | [VoicesColeby/whisper-tiny-minds14-en-us](https://huggingface.co/VoicesColeby/whisper-tiny-minds14-en-us) |
+| ✅ | Unit 6: Text-to-Speech (TTS) | `unit_6/06_text_to_speech.ipynb` | Push tagged `text-to-speech` (**tag confirmed**) | [VoicesColeby/speecht5-finetuned-voxpopuli-nl](https://huggingface.co/VoicesColeby/speecht5-finetuned-voxpopuli-nl) |
+| ✅ | Unit 7: Speech-to-Speech Demo | `unit_7/07_speech_to_speech_translation.ipynb` | Public Space, non-English output (**verified Dutch output**) | [VoicesColeby/speech-to-speech-translation](https://huggingface.co/spaces/VoicesColeby/speech-to-speech-translation) — *submit Space ID to [u7 assessment](https://huggingface.co/spaces/huggingface-course/audio-course-u7-assessment)* |
+
+**How to use:** When an exercise passes and is pushed, change its `☐` to `✅`, fill in the Hub URL, update the `## Status: TODO` marker in the notebook to `## Status: DONE`, and bump the overall count above. Confirm green checkmarks at the [progress tracker](https://huggingface.co/spaces/MariaK/Check-my-progress-Audio-Course).
+
+---
+
 ## Context
 
 The HuggingFace Audio Transformers Course has 4 hands-on exercises (Units 4-7) that must be completed for certification. Certificate of completion requires 3/4, certificate of honors requires 4/4. All notebooks are already scaffolded in the repo. The exercises build on each other -- Unit 6's TTS model can be reused in Unit 7's demo -- so order matters.

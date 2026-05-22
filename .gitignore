@@ -36,5 +36,8 @@ wandb/
 # Data files (download via datasets library)
 data/
 
+# Training logs
+*.log
+
 # Environment variables
 .env
