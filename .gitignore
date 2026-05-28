@@ -41,3 +41,10 @@ data/
 
 # Environment variables
 .env
+
+# Claude Code local discovery + scheduled-task lock
+.claude/
+
+# Transient test fixtures (local-only debugging audio)
+scripts/_test_input.wav
+scripts/assess/
