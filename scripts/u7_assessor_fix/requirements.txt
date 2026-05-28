@@ -1,0 +1,6 @@
+soundfile>=0.12
+transformers>=4.45,<4.60
+torch>=2.4
+torchaudio>=2.4
+numpy<2
+gradio_client>=1.4
